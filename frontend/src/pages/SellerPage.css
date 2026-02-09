@@ -1,0 +1,69 @@
+.seller-container {
+  max-width: 700px;
+  margin: auto;
+  padding: 20px;
+}
+
+.product-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.product-form input,
+.product-form textarea,
+.product-form select {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+}
+
+.product-form textarea {
+  resize: vertical;
+  height: 80px;
+}
+
+.submit-btn {
+  background: #0b18ce;
+  color: white;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.submit-btn:hover {
+  background: #0a16bf;
+}
+
+.status-msg {
+  margin-top: 15px;
+  font-weight: 600;
+}
+
+.preview-img {
+  width: 150px;
+  height: auto;
+  margin-top: 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+
+input[type=number] {
+  -moz-appearance: textfield;
+}

@@ -1,0 +1,169 @@
+version: "3.9"
+
+services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--entrypoints.web.address=:80"
+      - "--providers.swarm=true"
+      - "--providers.swarm.endpoint=unix:///var/run/docker.sock"
+      - "--providers.swarm.exposedbydefault=false"
+    ports:
+      - "80:80"
+      - "8088:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik-public
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak123
+    volumes:
+      - keycloak_db:/var/lib/postgresql/data
+    networks: [appnet]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.0
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak123
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_PROXY: edge
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8081:8080"
+    networks: [appnet]
+
+  backend:
+    image: backend-image:latest
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080/realms/alpstore
+      PG_HOST: postgres
+      PG_DB: alpstore
+      PG_USER: keycloak
+      PG_PASSWORD: keycloak123
+      ORDER_SERVICE_URL: http://order-service:7000
+      PAYMENT_SERVICE_URL: http://payment-service:7001
+    volumes:
+      - backend_uploads:/app/static/uploads
+    networks:
+      - appnet
+      - traefik-public
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=alpstore_traefik-public"
+
+        # /api -> backend
+        - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
+        - "traefik.http.routers.backend.entrypoints=web"
+        - "traefik.http.routers.backend.priority=100"
+
+        - "traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api"
+        - "traefik.http.routers.backend.middlewares=backend-strip"
+
+
+        - "traefik.http.services.backend.loadbalancer.server.port=5000"
+
+  frontend:
+    image: frontend-image:latest
+    networks:
+      - traefik-public
+    deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=alpstore_traefik-public"
+
+        
+        - "traefik.http.routers.frontend.rule=PathPrefix(`/`) && !PathPrefix(`/api`)"
+        - "traefik.http.routers.frontend.entrypoints=web"
+        - "traefik.http.routers.frontend.priority=1"
+
+        - "traefik.http.services.frontend.loadbalancer.server.port=80"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: alpstore
+      RABBITMQ_DEFAULT_PASS: alpstore123
+    ports: ["15672:15672"]
+    volumes: [rabbitmq_data:/var/lib/rabbitmq]
+    networks: [appnet]
+
+  order-service:
+    image: order-service-image:latest
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DB: alpstore
+      PG_USER: keycloak
+      PG_PASSWORD: keycloak123
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: alpstore
+      RABBITMQ_PASSWORD: alpstore123
+      RABBITMQ_QUEUE: order_payments
+      PORT: 7000
+      ENABLE_CONSUMER: "true"
+      INIT_DB: "false"
+    networks: [appnet]
+    deploy:
+      replicas: 1
+
+  payment-service:
+    image: payment-service-image:latest
+    environment:
+      PORT: 7001
+      ORDER_SERVICE_URL: http://order-service:7000
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: alpstore
+      RABBITMQ_PASSWORD: alpstore123
+      RABBITMQ_QUEUE: order_payments
+      PUBLIC_BASE_URL: http://127.0.0.1
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+    networks: [appnet]
+
+  stripe-listener:
+    image: stripe/stripe-cli:latest
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY} 
+    command: >
+      listen
+      --forward-to http://payment-service:7001/webhooks/stripe
+      --events checkout.session.completed,payment_intent.succeeded
+      --skip-verify
+    networks: [appnet]
+    deploy:
+      replicas: 1
+
+networks:
+  appnet:
+    driver: overlay
+  traefik-public:
+    driver: overlay
+
+volumes:
+  keycloak_db:
+  backend_uploads:
+  rabbitmq_data:
