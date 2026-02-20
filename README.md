@@ -1,5 +1,5 @@
 
-# AlpStore – Distributed Web Platform  
+# AlpStore - Distributed Web Platform  
  #### Copyright Alexandru-Andrei CRET - 343C2
 
 
@@ -25,6 +25,8 @@ The platform allows users to:
 - track order status updated asynchronously.
 
 ---
+![Screenshot](images/product_page.png)
+![Screenshot](images/Payment.png)
 
 ## 2. High-Level Architecture
 
@@ -230,9 +232,9 @@ Services validate tokens using Keycloak's public RSA key (JWKS endpoint).
 - Health checks for service availability
 
 ### Service Routing:
-- `/` → Frontend
-- `/api/` → Backend
-- `/auth/` → Keycloak
+- `/` - Frontend
+- `/api/` - Backend
+- `/auth/` - Keycloak
 - Internal services communicate via Docker DNS
 
 ---
@@ -357,26 +359,26 @@ bash db_check.sh
 
 ```
 Frontend
-   ↓ (POST /orders with auth token)
+   | (POST /orders with auth token)
 Traefik (API gateway)
-   ↓
+  |
 Backend (load balanced)
-   ↓
+  |
 PostgreSQL (persist order)
 Order Service (replicated)
-   ↓ (publish event)
+  | (publish event)
 RabbitMQ
-   ↓ (consume event)
+  | (consume event)
 Payment Service
-   ↓ (create Stripe session)
+  | (create Stripe session)
 Stripe API
-   ↓ (webhook callback)
+  | (webhook callback)
 Payment Service
-   ↓ (publish update)
+  | (publish update)
 RabbitMQ
-   ↓ (consume update)
+  | (consume update)
 Order Service (update status)
-   ↓
+  |
 PostgreSQL (update order.status)
 Frontend (poll or WebSocket for updates)
 ```
@@ -385,18 +387,18 @@ Frontend (poll or WebSocket for updates)
 
 ```
 Frontend (React)
-   ↓ HTTPS/REST
+    HTTPS/REST
 Traefik (reverse proxy)
-   ↓
-├─ /api → Backend (Flask)
-├─ /auth → Keycloak
+   
+├─ /api - Backend (Flask)
+├─ /auth - Keycloak
 └─ Internal
-   ├─ Backend ↔ Order Service (HTTP)
-   ├─ Order Service ↔ RabbitMQ
-   ├─ Payment Service ↔ RabbitMQ
-   ├─ Order Service ↔ PostgreSQL
-   ├─ Payment Service ↔ PostgreSQL
-   └─ Rate Limiter → Redis
+   ├─ Backend <-> Order Service (HTTP)
+   ├─ Order Service <-> RabbitMQ
+   ├─ Payment Service <-> RabbitMQ
+   ├─ Order Service <-> PostgreSQL
+   ├─ Payment Service <-> PostgreSQL
+   └─ Rate Limiter - Redis
 ```
 
 ---
@@ -429,7 +431,6 @@ Traefik (reverse proxy)
 - Input validation on all API endpoints
 - SQL injection prevented via SQLAlchemy ORM
 
----
 
 ## 16. Sources
 

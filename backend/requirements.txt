@@ -1,0 +1,7 @@
+flask
+flask-cors
+flask-sqlalchemy
+flask-migrate
+python-jose[cryptography]
+requests
+psycopg2-binary
