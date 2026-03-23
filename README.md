@@ -136,7 +136,6 @@ Responsibilities:
 - Support order retrieval and history tracking
 
 Key features:
-- Replicated for scalability (multiple instances)
 - Asynchronous payment processing via message queue
 - Unique constraint to prevent duplicate orders
 - JWT token validation for authenticated endpoints
@@ -161,12 +160,6 @@ Workflow:
 3. Stripe sends webhook to payment service
 4. Payment service publishes event to RabbitMQ
 5. Order service consumes message and updates order status
-
-### 4.5 Rate Limiting
-
-Rate limiting is enforced at the API level to protect backend services.
-Traefik is used for load balancing, while rate limiting is implemented at the service layer.
-
 
 
 
@@ -358,17 +351,15 @@ bash db_check.sh
 ### Request Flow for Order Placement
 
 ```
-Frontend
-   | (POST /orders with auth token)
 Traefik (API gateway)
   |
+Frontend
+   | (POST /orders with auth token)
 Backend (load balanced)
   |
 PostgreSQL (persist order)
-Order Service (replicated)
+Order Service
   | (publish event)
-RabbitMQ
-  | (consume event)
 Payment Service
   | (create Stripe session)
 Stripe API
